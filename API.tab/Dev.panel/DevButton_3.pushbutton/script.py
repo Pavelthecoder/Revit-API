@@ -1,68 +1,67 @@
 # -*- coding: utf-8 -*-
-__title__   = "Button 3"
-__doc__     = """Version = 1.0
-Date    = 15.06.2024
-________________________________________________________________
-Description:
+__title__   = ("Wall Layer Info + Preview Export")
+__doc__     = """Version = 1.0 """
 
-This is the placeholder for a .pushbutton
-You can use it to start your pyRevit Add-In
-
-________________________________________________________________
-How-To:
-
-1. [Hold ALT + CLICK] on the button to open its source folder.
-You will be able to override this placeholder.
-
-2. Automate Your Boring Work ;)
-
-________________________________________________________________
-TODO:
-[FEATURE] - Describe Your ToDo Tasks Here
-________________________________________________________________
-Last Updates:
-- [15.06.2024] v1.0 Change Description
-- [10.06.2024] v0.5 Change Description
-- [05.06.2024] v0.1 Change Description 
-________________________________________________________________
-Author: Erik Frits"""
-
-# ╦╔╦╗╔═╗╔═╗╦═╗╔╦╗╔═╗
-# ║║║║╠═╝║ ║╠╦╝ ║ ╚═╗
-# ╩╩ ╩╩  ╚═╝╩╚═ ╩ ╚═╝
-#==================================================
-from Autodesk.Revit.DB import *
-
-#.NET Imports
 import clr
-clr.AddReference('System')
-from System.Collections.Generic import List
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI.Selection import ObjectType
 
+clr.AddReference("System.Drawing")
+import System
+from System.Drawing import Bitmap
+from System.IO import FileStream, FileMode
 
-# ╦  ╦╔═╗╦═╗╦╔═╗╔╗ ╦  ╔═╗╔═╗
-# ╚╗╔╝╠═╣╠╦╝║╠═╣╠╩╗║  ║╣ ╚═╗
-#  ╚╝ ╩ ╩╩╚═╩╩ ╩╚═╝╩═╝╚═╝╚═╝
-#==================================================
-app    = __revit__.Application
-uidoc  = __revit__.ActiveUIDocument
-doc    = __revit__.ActiveUIDocument.Document #type:Document
+uidoc = __revit__.ActiveUIDocument
+doc = uidoc.Document
 
+# ----------------------------------------------------------
+# 1) Pick element
+# ----------------------------------------------------------
+ref = uidoc.Selection.PickObject(ObjectType.Element)
+element = doc.GetElement(ref)
 
-# ╔╦╗╔═╗╦╔╗╔
-# ║║║╠═╣║║║║
-# ╩ ╩╩ ╩╩╝╚╝
-#==================================================
+# Get its WallType (ElementType)
+type_id = element.GetTypeId()
+el_type = doc.GetElement(type_id)
 
+# ----------------------------------------------------------
+# 2) Read compound structure layers
+# ----------------------------------------------------------
+structure = el_type.GetCompoundStructure()
+layers = structure.GetLayers()
 
+print("\n=== WALL LAYERS ===\n")
 
+for layer in layers:
+    mat_id = layer.MaterialId
+    mat = doc.GetElement(mat_id)
+    mat_name = mat.Name if mat else "<No Material>"
 
-#🤖 Automate Your Boring Work Here
+    # Layer function
+    fun_enum = layer.Function
+    fun_name = fun_enum.ToString()
 
+    # Width
+    width_ft = layer.Width
+    width_cm = UnitUtils.ConvertFromInternalUnits(width_ft, UnitTypeId.Centimeters)
 
+    print("Material: {:<25}  Width: {:>6.2f} cm  Function: {}".format(
+          mat_name, width_cm, fun_name))
 
+# ----------------------------------------------------------
+# 3) Export wall type preview image
+# ----------------------------------------------------------
+try:
+    size = System.Drawing.Size(512, 512)
+    preview = el_type.GetPreviewImage(size)
 
+    if preview:
+        output_path = r"C:\Users\pavel\Documents\WallTypePreview.png"
+        preview.Save(output_path)
+        print("\nPreview image exported to:")
+        print(output_path)
+    else:
+        print("\nNo preview image available for this element type.")
 
-#==================================================
-#🚫 DELETE BELOW
-from Snippets._customprint import kit_button_clicked    # Import Reusable Function from 'lib/Snippets/_customprint.py'
-kit_button_clicked(btn_name=__title__)                  # Display Default Print Message
+except Exception as e:
+    print("\nERROR exporting preview:", e)

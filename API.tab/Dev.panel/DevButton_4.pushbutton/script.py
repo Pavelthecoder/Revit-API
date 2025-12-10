@@ -1,68 +1,43 @@
 # -*- coding: utf-8 -*-
-__title__   = "Button 4"
-__doc__     = """Version = 1.0
-Date    = 15.06.2024
-________________________________________________________________
-Description:
-
-This is the placeholder for a .pushbutton
-You can use it to start your pyRevit Add-In
-
-________________________________________________________________
-How-To:
-
-1. [Hold ALT + CLICK] on the button to open its source folder.
-You will be able to override this placeholder.
-
-2. Automate Your Boring Work ;)
-
-________________________________________________________________
-TODO:
-[FEATURE] - Describe Your ToDo Tasks Here
-________________________________________________________________
-Last Updates:
-- [15.06.2024] v1.0 Change Description
-- [10.06.2024] v0.5 Change Description
-- [05.06.2024] v0.1 Change Description 
-________________________________________________________________
-Author: Erik Frits"""
-
-# ╦╔╦╗╔═╗╔═╗╦═╗╔╦╗╔═╗
-# ║║║║╠═╝║ ║╠╦╝ ║ ╚═╗
-# ╩╩ ╩╩  ╚═╝╩╚═ ╩ ╚═╝
-#==================================================
-from Autodesk.Revit.DB import *
-
-#.NET Imports
 import clr
-clr.AddReference('System')
-from System.Collections.Generic import List
+clr.AddReference("RevitAPI")
 
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.DB.Structure import StructuralFramingUtils
 
-# ╦  ╦╔═╗╦═╗╦╔═╗╔╗ ╦  ╔═╗╔═╗
-# ╚╗╔╝╠═╣╠╦╝║╠═╣╠╩╗║  ║╣ ╚═╗
-#  ╚╝ ╩ ╩╩╚═╩╩ ╩╚═╝╩═╝╚═╝╚═╝
-#==================================================
-app    = __revit__.Application
-uidoc  = __revit__.ActiveUIDocument
-doc    = __revit__.ActiveUIDocument.Document #type:Document
+# Current Revit document
+doc = __revit__.ActiveUIDocument.Document
 
+# Beam IDs you want to process
+BEAM_IDS = [
+    3225855, 3225856, 3225857, 3225858, 3225859, 3225860, 3225861,
+    3225862, 3225863, 3225864, 3225865, 3225866, 3225867, 3225868,
+    3225869, 3225870, 3225871, 3225872, 3225873, 3225874, 3225875,
+    3225876, 3225877, 3226061, 3226062, 3226063, 3226064, 3226065,
+    3226066, 3226067, 3226068, 3226069, 3226070, 3226071, 3226072
+]
 
-# ╔╦╗╔═╗╦╔╗╔
-# ║║║╠═╣║║║║
-# ╩ ╩╩ ╩╩╝╚╝
-#==================================================
+# Convert IDs into elements
+beams = [doc.GetElement(ElementId(i)) for i in BEAM_IDS]
 
+# Start transaction
+t = Transaction(doc, "Disallow Beam Joins")
+t.Start()
 
+results = []
+for beam in beams:
+    if isinstance(beam, FamilyInstance):
+        try:
+            StructuralFramingUtils.DisallowJoinAtEnd(beam, 0)  # start
+            StructuralFramingUtils.DisallowJoinAtEnd(beam, 1)  # end
+            results.append("Disallowed joins for beam: {}".format(beam.Id))
+        except Exception as e:
+            results.append("Failed on {}: {}".format(beam.Id, e))
+    else:
+        results.append("Element {} is not a beam".format(beam.Id))
 
+t.Commit()
 
-#🤖 Automate Your Boring Work Here
-
-
-
-
-
-#==================================================
-#🚫 DELETE BELOW
-from Snippets._customprint import kit_button_clicked    # Import Reusable Function from 'lib/Snippets/_customprint.py'
-kit_button_clicked(btn_name=__title__)                  # Display Default Print Message
+# Print to pyRevit console
+for r in results:
+    print(r)
